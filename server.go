@@ -54,6 +54,9 @@ func (this *Server) Handler(con net.Conn) {
 
 	user.Online()
 
+	// 监控当前用户是否活跃的channel
+	// isLive := make(chan bool)
+
 	// receive message from client
 	go func() {
 		buf := make([]byte, 4096)
@@ -71,8 +74,21 @@ func (this *Server) Handler(con net.Conn) {
 
 			msg := string(buf[:n-1])
 			user.DoMessage(msg)
+
+			// isLive <- true
 		}
 	}()
+
+	// 	for {
+	// 		select {
+	// 		case <-isLive:
+	// 			// do nothing, it will activate the following case to update the timer
+	// 		case <-time.After(time.Second * 10):
+	// 			user.SendMessage("You are offline because of timeout")
+	// 			close(user.C)
+	// 			con.Close()
+	// 		}
+	// 	}
 }
 
 // create a method of current class

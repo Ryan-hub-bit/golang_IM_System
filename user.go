@@ -1,6 +1,9 @@
 package main
 
-import "net"
+import (
+	"net"
+	"strings"
+)
 
 type User struct {
 	Name   string
@@ -50,13 +53,32 @@ func (this *User) SendMessage(msg string) {
 }
 
 func (this *User) DoMessage(msg string) {
-	if msg == "all user" {
+	if msg == "All users" {
 		this.server.mapLock.Lock()
 		for _, user := range this.server.OnlineMap {
 			onlineMsg := "[" + user.Addr + user.Name + ":" + "online......\n"
 			this.SendMessage(onlineMsg)
 		}
 		this.server.mapLock.Unlock()
+
+	} else if msg[:7] == "rename|" {
+
+		newName := strings.Split(msg, "|")[1]
+
+		// check if the newName has already been used
+		_, ok := this.server.OnlineMap[newName]
+		if ok {
+			this.SendMessage("newName has already been used")
+		} else {
+			this.server.mapLock.Lock()
+			delete(this.server.OnlineMap, this.Name)
+			this.server.OnlineMap[newName] = this
+			this.server.mapLock.Unlock()
+
+			this.Name = newName
+			this.SendMessage("Your name has been modified to:" + newName + "\n")
+		}
+
 	} else {
 		this.server.Broadcast(this, msg)
 	}
