@@ -2,13 +2,20 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"net"
+	"sync"
 )
 
 // we want Sever to be pulbic used, so it is cap
 type Server struct {
 	Ip   string
 	Port int
+
+	OnlineMap map[string]*User
+	mapLock   sync.RWMutex
+
+	Message chan string
 }
 
 // because we want to create a new server, and we also can modify it in real address, so we need to return the address of the server
@@ -16,15 +23,61 @@ type Server struct {
 func NewServer(ip string, port int) *Server {
 	// get the address of the server so we can modify it and change it
 	server := &Server{
-		Ip:   ip,
-		Port: port,
+		Ip:        ip,
+		Port:      port,
+		OnlineMap: make(map[string]*User),
+		Message:   make(chan string),
 	}
 	return server
 }
 
+// listen broadcase
+func (this *Server) ListenMessager() {
+	for {
+		msg := <-this.Message
+		this.mapLock.Lock()
+		for _, cli := range this.OnlineMap {
+			cli.C <- msg
+		}
+		this.mapLock.Unlock()
+	}
+}
+
+func (this *Server) Broadcast(user *User, msg string) {
+	sendMsg := "[" + user.Addr + "]" + user.Name + ":" + msg
+	this.Message <- sendMsg
+}
+
 func (this *Server) Handler(con net.Conn) {
 	// current business
-	fmt.Println("do something....")
+	// fmt.Println("
+	user := NewUser(con)
+
+	this.mapLock.Lock()
+	this.OnlineMap[user.Name] = user
+	this.mapLock.Unlock()
+
+	// broadcase message
+	this.Broadcast(user, "已上线")
+	// receive message from client
+	go func() {
+		buf := make([]byte, 4096)
+		for {
+			n, error := con.Read(buf)
+			if n == 0 {
+				this.Broadcast(user, "已下线")
+				return
+			}
+
+			if error != nil && error != io.EOF {
+				fmt.Println("Conn Read Error:", error)
+				return
+			}
+
+			msg := string(buf[:n-1])
+			this.Broadcast(user, msg)
+		}
+	}()
 }
 
 // create a method of current class
@@ -37,7 +90,8 @@ func (this *Server) Start() {
 	}
 	// close listen socket
 	defer listener.Close()
-
+	go this.ListenMessager()
+	// TCP is based on bit transmit, so we have to use a for loop to receive them one by one
 	for {
 		// accept
 		conn, err := listener.Accept()
