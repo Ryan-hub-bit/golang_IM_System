@@ -50,22 +50,17 @@ func (this *Server) Broadcast(user *User, msg string) {
 
 func (this *Server) Handler(con net.Conn) {
 	// current business
-	// fmt.Println("
-	user := NewUser(con)
+	user := NewUser(con, this)
 
-	this.mapLock.Lock()
-	this.OnlineMap[user.Name] = user
-	this.mapLock.Unlock()
+	user.Online()
 
-	// broadcase message
-	this.Broadcast(user, "已上线")
 	// receive message from client
 	go func() {
 		buf := make([]byte, 4096)
 		for {
 			n, error := con.Read(buf)
 			if n == 0 {
-				this.Broadcast(user, "已下线")
+				user.Offline()
 				return
 			}
 
@@ -75,7 +70,7 @@ func (this *Server) Handler(con net.Conn) {
 			}
 
 			msg := string(buf[:n-1])
-			this.Broadcast(user, msg)
+			user.DoMessage(msg)
 		}
 	}()
 }
