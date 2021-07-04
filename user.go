@@ -90,6 +90,7 @@ func (this *User) DoMessage(msg string) {
 			this.SendMessage("The user is not online or it does not exist")
 			return
 		}
+
 		// send content
 		sendMsg := strings.Split(msg, "|")[2]
 		if sendMsg == "" {
@@ -97,7 +98,6 @@ func (this *User) DoMessage(msg string) {
 		}
 		receiverObj := this.server.OnlineMap[receiver]
 		receiverObj.SendMessage(this.Name + ":" + sendMsg + "\n")
-
 	} else {
 		this.server.Broadcast(this, msg)
 	}
@@ -107,7 +107,6 @@ func (this *User) DoMessage(msg string) {
 func (this *User) ListenMessage() {
 	for {
 		msg := <-this.C
-
 		// make it to the client when it comes in channel
 		this.conn.Write([]byte(msg + "\n"))
 
