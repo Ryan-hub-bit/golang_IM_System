@@ -88,6 +88,7 @@ func (this *Server) Handler(con net.Conn) {
 			user.SendMessage("You are offline because of timeout")
 			close(user.C)
 			con.Close()
+			return
 		}
 	}
 }
